@@ -1,7 +1,7 @@
 import os
 
-import pymongo
 from dotenv import load_dotenv
+from pymongo import AsyncMongoClient
 
 load_dotenv()
 
@@ -11,7 +11,7 @@ DATABASE_NAME = os.getenv("DATABASE_NAME", "rideguard360")
 if not MONGODB_URI:
     raise RuntimeError("MONGODB_URI is not set in .env")
 
-client = pymongo.AsyncMongoClient(MONGODB_URI)
+client = AsyncMongoClient(MONGODB_URI)
 
 db = client[DATABASE_NAME]
 
