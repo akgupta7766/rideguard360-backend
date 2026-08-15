@@ -47,10 +47,16 @@ async def get_trip(trip_id: str):
 async def start_trip_endpoint(data: TripStartRequest):
     result = await start_trip(data.model_dump())
 
-    if result is None:
+    if result == "bus_not_found":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Bus not found",
+        )
+
+    if result == "route_not_found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Route not found",
         )
 
     if result == "already_active":

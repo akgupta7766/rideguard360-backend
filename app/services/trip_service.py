@@ -8,6 +8,7 @@ from app.database.mongodb import db
 
 trips_collection = db["trips"]
 buses_collection = db["buses"]
+routes_collection = db["routes"]
 
 
 def serialize_trip(trip: dict) -> dict:
@@ -22,18 +23,33 @@ def serialize_trip(trip: dict) -> dict:
 
 
 async def start_trip(trip_data: dict):
-    # Verify bus exists
+    # Validate bus ID
     try:
         bus_object_id = ObjectId(trip_data["bus_id"])
     except InvalidId:
-        return None
+        return "bus_not_found"
 
+    # Validate route ID
+    try:
+        route_object_id = ObjectId(trip_data["route_id"])
+    except InvalidId:
+        return "route_not_found"
+
+    # Verify bus exists
     bus = await buses_collection.find_one(
         {"_id": bus_object_id}
     )
 
     if not bus:
-        return None
+        return "bus_not_found"
+
+    # Verify route exists
+    route = await routes_collection.find_one(
+        {"_id": route_object_id}
+    )
+
+    if not route:
+        return "route_not_found"
 
     # Prevent another active trip for the same bus
     existing_trip = await trips_collection.find_one(

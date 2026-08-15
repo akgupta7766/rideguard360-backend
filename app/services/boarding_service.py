@@ -9,6 +9,7 @@ from app.database.mongodb import db
 boarding_collection = db["boarding"]
 trips_collection = db["trips"]
 stops_collection = db["stops"]
+students_collection = db["students"]
 
 
 def serialize_boarding(record: dict) -> dict:
@@ -39,6 +40,12 @@ async def create_boarding(boarding_data: dict):
     except InvalidId:
         return "stop_not_found"
 
+    # Validate student ID
+    try:
+        student_object_id = ObjectId(student_id)
+    except InvalidId:
+        return "student_not_found"
+
     # Trip must exist
     trip = await trips_collection.find_one(
         {"_id": trip_object_id}
@@ -55,12 +62,20 @@ async def create_boarding(boarding_data: dict):
     if not stop:
         return "stop_not_found"
 
+    # Student must exist
+    student = await students_collection.find_one(
+        {"_id": student_object_id}
+    )
+
+    if not student:
+        return "student_not_found"
+
     # Stop must belong to the route of this trip
     if stop.get("route_id") != trip.get("route_id"):
         return "stop_not_on_trip_route"
 
-    # Prevent duplicate boarding action for the same student,
-    # trip and stop.
+    # Prevent duplicate boarding action
+    # for the same student, trip and stop
     existing = await boarding_collection.find_one(
         {
             "trip_id": trip_id,

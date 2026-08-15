@@ -41,6 +41,12 @@ async def create_boarding_endpoint(
             detail="Stop not found",
         )
 
+    if result == "student_not_found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
     if result == "stop_not_on_trip_route":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
