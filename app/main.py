@@ -6,8 +6,13 @@ from app.database.mongodb import (
     connect_to_mongodb,
     close_mongodb_connection,
 )
+
 from app.routes.auth import router as auth_router
 from app.routes.buses import router as buses_router
+from app.routes.gps import router as gps_router
+from app.routes.emergencies import router as emergencies_router
+from app.routes.trips import router as trips_router
+from app.routes.routes import router as routes_router
 
 
 @asynccontextmanager
@@ -25,8 +30,13 @@ app = FastAPI(
 )
 
 
+# Register routers
 app.include_router(auth_router)
 app.include_router(buses_router)
+app.include_router(gps_router)
+app.include_router(emergencies_router)
+app.include_router(trips_router)
+app.include_router(routes_router)
 
 
 @app.get("/")
