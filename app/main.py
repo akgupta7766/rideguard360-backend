@@ -9,6 +9,10 @@ from app.database.mongodb import (
 
 from app.routes.auth import router as auth_router
 from app.routes.buses import router as buses_router
+from app.routes.drivers import router as drivers_router
+from app.routes.students import router as students_router
+from app.routes.parents import router as parents_router
+from app.routes.notifications import router as notifications_router
 from app.routes.gps import router as gps_router
 from app.routes.emergencies import router as emergencies_router
 from app.routes.trips import router as trips_router
@@ -34,11 +38,16 @@ app = FastAPI(
 # Register routers
 app.include_router(auth_router)
 app.include_router(buses_router)
+app.include_router(drivers_router)
+app.include_router(students_router)
+app.include_router(parents_router)
+app.include_router(notifications_router)
 app.include_router(gps_router)
 app.include_router(emergencies_router)
 app.include_router(trips_router)
 app.include_router(routes_router)
 app.include_router(boarding_router)
+
 
 @app.get("/")
 async def root():
