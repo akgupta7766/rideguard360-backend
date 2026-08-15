@@ -7,6 +7,7 @@ from app.database.mongodb import (
     close_mongodb_connection,
 )
 from app.routes.auth import router as auth_router
+from app.routes.buses import router as buses_router
 
 
 @asynccontextmanager
@@ -25,6 +26,7 @@ app = FastAPI(
 
 
 app.include_router(auth_router)
+app.include_router(buses_router)
 
 
 @app.get("/")
