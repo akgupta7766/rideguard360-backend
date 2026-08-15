@@ -13,6 +13,7 @@ from app.routes.gps import router as gps_router
 from app.routes.emergencies import router as emergencies_router
 from app.routes.trips import router as trips_router
 from app.routes.routes import router as routes_router
+from app.routes.boarding import router as boarding_router
 
 
 @asynccontextmanager
@@ -37,7 +38,7 @@ app.include_router(gps_router)
 app.include_router(emergencies_router)
 app.include_router(trips_router)
 app.include_router(routes_router)
-
+app.include_router(boarding_router)
 
 @app.get("/")
 async def root():
