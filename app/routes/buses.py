@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.services.bus_service import (
     create_bus,
     get_all_buses,
@@ -16,7 +17,12 @@ router = APIRouter(
 
 
 @router.post("/")
-async def create_new_bus(bus_data: dict):
+async def create_new_bus(
+    bus_data: dict,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await create_bus(bus_data)
 
     if result is None:
@@ -29,12 +35,21 @@ async def create_new_bus(bus_data: dict):
 
 
 @router.get("/")
-async def get_buses():
+async def get_buses(
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     return await get_all_buses()
 
 
 @router.get("/{bus_id}")
-async def get_bus(bus_id: str):
+async def get_bus(
+    bus_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     result = await get_bus_by_id(bus_id)
 
     if result is None:
@@ -50,8 +65,14 @@ async def get_bus(bus_id: str):
 async def update_existing_bus(
     bus_id: str,
     bus_data: dict,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
 ):
-    result = await update_bus(bus_id, bus_data)
+    result = await update_bus(
+        bus_id,
+        bus_data,
+    )
 
     if result is None:
         raise HTTPException(
@@ -63,7 +84,12 @@ async def update_existing_bus(
 
 
 @router.delete("/{bus_id}")
-async def delete_existing_bus(bus_id: str):
+async def delete_existing_bus(
+    bus_id: str,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await delete_bus(bus_id)
 
     if not result:

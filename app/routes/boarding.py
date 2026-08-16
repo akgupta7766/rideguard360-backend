@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.schemas.boarding import (
     BoardingCreate,
     BoardingResponse,
@@ -24,6 +25,9 @@ router = APIRouter(
 )
 async def create_boarding_endpoint(
     data: BoardingCreate,
+    current_user: dict = Depends(
+        require_role("admin", "driver")
+    ),
 ):
     result = await create_boarding(
         data.model_dump()
@@ -68,6 +72,9 @@ async def create_boarding_endpoint(
 )
 async def get_boarding_for_stop(
     stop_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
 ):
     return await get_boarding_by_stop(stop_id)
 
@@ -78,5 +85,8 @@ async def get_boarding_for_stop(
 )
 async def get_boarding_for_trip(
     trip_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
 ):
     return await get_boarding_by_trip(trip_id)

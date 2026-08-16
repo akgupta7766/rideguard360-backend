@@ -52,7 +52,11 @@ async def get_all_notifications(user_id: str):
     return notifications
 
 
-async def mark_notification_as_read(notification_id: str):
+async def mark_notification_as_read(
+    notification_id: str,
+    user_id: str,
+    role: str,
+):
     try:
         object_id = ObjectId(notification_id)
     except InvalidId:
@@ -63,6 +67,10 @@ async def mark_notification_as_read(notification_id: str):
     )
 
     if not notification:
+        return None
+
+    # Non-admin users can only mark their own notification as read.
+    if role != "admin" and notification.get("user_id") != user_id:
         return None
 
     await notifications_collection.update_one(

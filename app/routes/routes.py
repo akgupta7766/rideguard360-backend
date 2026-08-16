@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.schemas.route import (
     RouteCreate,
     RouteResponse,
@@ -34,7 +35,11 @@ router = APIRouter(
     "/routes",
     response_model=list[RouteResponse],
 )
-async def get_routes():
+async def get_routes(
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     return await get_all_routes()
 
 
@@ -42,7 +47,12 @@ async def get_routes():
     "/routes/{route_id}",
     response_model=RouteResponse,
 )
-async def get_route(route_id: str):
+async def get_route(
+    route_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     result = await get_route_by_id(route_id)
 
     if result is None:
@@ -59,7 +69,12 @@ async def get_route(route_id: str):
     response_model=RouteResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_route_endpoint(data: RouteCreate):
+async def create_route_endpoint(
+    data: RouteCreate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await create_route(
         data.model_dump()
     )
@@ -80,6 +95,9 @@ async def create_route_endpoint(data: RouteCreate):
 async def update_route_endpoint(
     route_id: str,
     data: RouteUpdate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
 ):
     result = await update_route(
         route_id,
@@ -103,7 +121,12 @@ async def update_route_endpoint(
     "/routes/{route_id}/stops",
     response_model=list[StopResponse],
 )
-async def get_stops(route_id: str):
+async def get_stops(
+    route_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     result = await get_route_stops(route_id)
 
     if result is None:
@@ -123,6 +146,9 @@ async def get_stops(route_id: str):
 async def create_stop_endpoint(
     route_id: str,
     data: StopCreate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
 ):
     result = await create_stop(
         route_id,
@@ -151,6 +177,9 @@ async def create_stop_endpoint(
 async def update_stop_endpoint(
     stop_id: str,
     data: StopCreate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
 ):
     result = await update_stop(
         stop_id,

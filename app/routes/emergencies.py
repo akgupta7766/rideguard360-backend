@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.schemas.emergency import (
     EmergencyCreate,
     EmergencyResponse,
@@ -25,6 +26,9 @@ router = APIRouter(
 )
 async def create_emergency_endpoint(
     data: EmergencyCreate,
+    current_user: dict = Depends(
+        require_role("admin", "driver")
+    ),
 ):
     result = await create_emergency(
         data.model_dump()
@@ -43,7 +47,11 @@ async def create_emergency_endpoint(
     "/active",
     response_model=list[EmergencyResponse],
 )
-async def get_active_emergencies_endpoint():
+async def get_active_emergencies_endpoint(
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     return await get_active_emergencies()
 
 
@@ -53,6 +61,9 @@ async def get_active_emergencies_endpoint():
 )
 async def get_emergency_endpoint(
     emergency_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
 ):
     result = await get_emergency_by_id(
         emergency_id
@@ -73,6 +84,9 @@ async def get_emergency_endpoint(
 )
 async def resolve_emergency_endpoint(
     emergency_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver")
+    ),
 ):
     result = await resolve_emergency(
         emergency_id

@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.schemas.parent import (
     ParentCreate,
     ParentResponse,
@@ -25,7 +26,12 @@ router = APIRouter(
     response_model=ParentResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_new_parent(parent_data: ParentCreate):
+async def create_new_parent(
+    parent_data: ParentCreate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await create_parent(
         parent_data.model_dump()
     )
@@ -43,7 +49,11 @@ async def create_new_parent(parent_data: ParentCreate):
     "/",
     response_model=list[ParentResponse],
 )
-async def get_parents():
+async def get_parents(
+    current_user: dict = Depends(
+        require_role("admin", "parent")
+    ),
+):
     return await get_all_parents()
 
 
@@ -51,7 +61,12 @@ async def get_parents():
     "/{parent_id}",
     response_model=ParentResponse,
 )
-async def get_parent(parent_id: str):
+async def get_parent(
+    parent_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "parent")
+    ),
+):
     result = await get_parent_by_id(parent_id)
 
     if result is None:
@@ -70,6 +85,9 @@ async def get_parent(parent_id: str):
 async def update_existing_parent(
     parent_id: str,
     parent_data: ParentUpdate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
 ):
     result = await update_parent(
         parent_id,
@@ -88,7 +106,12 @@ async def update_existing_parent(
 @router.delete(
     "/{parent_id}",
 )
-async def delete_existing_parent(parent_id: str):
+async def delete_existing_parent(
+    parent_id: str,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await delete_parent(parent_id)
 
     if not result:

@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.schemas.student import (
     StudentCreate,
     StudentResponse,
@@ -25,7 +26,12 @@ router = APIRouter(
     response_model=StudentResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_new_student(student_data: StudentCreate):
+async def create_new_student(
+    student_data: StudentCreate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await create_student(
         student_data.model_dump()
     )
@@ -43,7 +49,11 @@ async def create_new_student(student_data: StudentCreate):
     "/",
     response_model=list[StudentResponse],
 )
-async def get_students():
+async def get_students(
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     return await get_all_students()
 
 
@@ -51,7 +61,12 @@ async def get_students():
     "/{student_id}",
     response_model=StudentResponse,
 )
-async def get_student(student_id: str):
+async def get_student(
+    student_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     result = await get_student_by_id(student_id)
 
     if result is None:
@@ -70,6 +85,9 @@ async def get_student(student_id: str):
 async def update_existing_student(
     student_id: str,
     student_data: StudentUpdate,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
 ):
     result = await update_student(
         student_id,
@@ -88,7 +106,12 @@ async def update_existing_student(
 @router.delete(
     "/{student_id}",
 )
-async def delete_existing_student(student_id: str):
+async def delete_existing_student(
+    student_id: str,
+    current_user: dict = Depends(
+        require_role("admin")
+    ),
+):
     result = await delete_student(student_id)
 
     if not result:

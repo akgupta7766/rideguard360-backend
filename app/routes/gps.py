@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.security import require_role
 from app.schemas.gps import GPSUpdateRequest, GPSResponse
 from app.services.gps_service import (
     update_bus_location,
@@ -17,7 +18,12 @@ router = APIRouter(
     "/update",
     response_model=GPSResponse,
 )
-async def update_gps(data: GPSUpdateRequest):
+async def update_gps(
+    data: GPSUpdateRequest,
+    current_user: dict = Depends(
+        require_role("admin", "driver")
+    ),
+):
     result = await update_bus_location(
         data.model_dump()
     )
@@ -35,7 +41,12 @@ async def update_gps(data: GPSUpdateRequest):
     "/bus/{bus_id}",
     response_model=GPSResponse,
 )
-async def get_gps(bus_id: str):
+async def get_gps(
+    bus_id: str,
+    current_user: dict = Depends(
+        require_role("admin", "driver", "parent")
+    ),
+):
     result = await get_bus_location(bus_id)
 
     if result is None:
