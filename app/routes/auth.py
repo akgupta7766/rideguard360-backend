@@ -1,8 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.database.mongodb import db
-from app.schemas.auth import LoginRequest, LoginResponse
-from app.services.auth_service import authenticate_user
+from app.schemas.auth import (
+    LoginRequest,
+    LoginResponse,
+    RegisterRequest,
+    RegisterResponse,
+)
+from app.services.auth_service import (
+    authenticate_user,
+    register_user,
+)
 
 
 router = APIRouter(
@@ -13,6 +21,32 @@ router = APIRouter(
 
 def get_users_collection():
     return db["users"]
+
+
+@router.post(
+    "/register",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    register_data: RegisterRequest,
+    users_collection=Depends(get_users_collection),
+):
+    result = await register_user(
+        users_collection=users_collection,
+        name=register_data.name,
+        email=register_data.email,
+        password=register_data.password,
+        role=register_data.role,
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this email already exists",
+        )
+
+    return result
 
 
 @router.post(
