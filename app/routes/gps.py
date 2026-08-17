@@ -7,7 +7,7 @@ from fastapi import (
     status,
 )
 
-from app.core.security import require_role
+from app.core.security import require_gps_update_access, require_role
 from app.schemas.gps import GPSUpdateRequest, GPSResponse
 from app.services.gps_service import (
     update_bus_location,
@@ -28,9 +28,7 @@ router = APIRouter(
 )
 async def update_gps(
     data: GPSUpdateRequest,
-    current_user: dict = Depends(
-        require_role("admin", "driver")
-    ),
+    current_user: dict = Depends(require_gps_update_access),
 ):
     result = await update_bus_location(
         data.model_dump()
@@ -75,7 +73,7 @@ async def gps_websocket(websocket: WebSocket):
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        pass
 
-    except Exception:
+    finally:
         manager.disconnect(websocket)

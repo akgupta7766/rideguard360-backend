@@ -1,9 +1,17 @@
 import asyncio
+import json
 import math
+import os
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-from app.services.gps_service import update_bus_location
+from dotenv import load_dotenv
 
+
+# This script is run directly, so app.main's dotenv setup does not execute.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 # ==========================================
 # VIRTUAL BUS CONFIGURATION
@@ -29,11 +37,53 @@ ROUTE = [
 
 
 # Time between GPS updates
-UPDATE_INTERVAL = 2
+UPDATE_INTERVAL = 1
 
 
 # Virtual bus speed in km/h
 BUS_SPEED = 25
+
+
+GPS_API_BASE_URL = os.getenv(
+    "GPS_API_BASE_URL",
+    "http://127.0.0.1:8000",
+).rstrip("/")
+GPS_SIMULATOR_TOKEN = os.getenv("GPS_SIMULATOR_TOKEN")
+GPS_SIMULATOR_API_KEY = os.getenv("GPS_SIMULATOR_API_KEY")
+
+
+def post_gps_update(gps_data: dict) -> dict:
+    if not GPS_SIMULATOR_API_KEY and not GPS_SIMULATOR_TOKEN:
+        raise RuntimeError(
+            "Set GPS_SIMULATOR_API_KEY or GPS_SIMULATOR_TOKEN"
+        )
+
+    headers = {"Content-Type": "application/json"}
+
+    if GPS_SIMULATOR_API_KEY:
+        headers["X-GPS-Simulator-Key"] = GPS_SIMULATOR_API_KEY
+    else:
+        headers["Authorization"] = f"Bearer {GPS_SIMULATOR_TOKEN}"
+
+    request = Request(
+        f"{GPS_API_BASE_URL}/api/gps/update",
+        data=json.dumps(gps_data).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"GPS update failed with HTTP {error.code}: {detail}"
+        ) from error
+    except URLError as error:
+        raise RuntimeError(
+            f"Unable to reach GPS API: {error.reason}"
+        ) from error
 
 
 # ==========================================
@@ -68,6 +118,46 @@ def calculate_heading(
     return (heading + 360) % 360
 
 
+def distance_in_metres(lat1, lon1, lat2, lon2):
+    earth_radius = 6_371_000
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(delta_lon / 2) ** 2
+    )
+    return 2 * earth_radius * math.asin(math.sqrt(a))
+
+
+def build_simulation_points():
+    points = []
+    metres_per_update = (BUS_SPEED * 1000 / 3600) * UPDATE_INTERVAL
+
+    for index, (start_lat, start_lon) in enumerate(ROUTE):
+        end_lat, end_lon = ROUTE[(index + 1) % len(ROUTE)]
+        steps = max(
+            1,
+            round(
+                distance_in_metres(
+                    start_lat, start_lon, end_lat, end_lon
+                ) / metres_per_update
+            ),
+        )
+        heading = calculate_heading(start_lat, start_lon, end_lat, end_lon)
+
+        for step in range(steps):
+            progress = step / steps
+            points.append((
+                start_lat + (end_lat - start_lat) * progress,
+                start_lon + (end_lon - start_lon) * progress,
+                heading,
+            ))
+
+    return points
+
+
 # ==========================================
 # SIMULATOR
 # ==========================================
@@ -80,30 +170,23 @@ async def run_simulator():
     print("====================================")
     print(f"Bus ID : {BUS_ID}")
     print(f"Speed  : {BUS_SPEED} km/h")
+    print(f"API    : {GPS_API_BASE_URL}")
+    print(
+        "Auth   : "
+        f"{'API key' if GPS_SIMULATOR_API_KEY else 'JWT token' if GPS_SIMULATOR_TOKEN else 'MISSING'}"
+    )
     print(
         f"Update : every {UPDATE_INTERVAL} seconds"
     )
     print("====================================")
     print()
 
+    route_points = build_simulation_points()
     index = 0
 
     while True:
 
-        current_lat, current_lon = ROUTE[index]
-
-        if index < len(ROUTE) - 1:
-            next_lat, next_lon = ROUTE[index + 1]
-
-            heading = calculate_heading(
-                current_lat,
-                current_lon,
-                next_lat,
-                next_lon,
-            )
-
-        else:
-            heading = 0
+        current_lat, current_lon, heading = route_points[index]
 
         gps_data = {
             "bus_id": BUS_ID,
@@ -115,8 +198,9 @@ async def run_simulator():
 
         try:
 
-            result = await update_bus_location(
-                gps_data
+            result = await asyncio.to_thread(
+                post_gps_update,
+                gps_data,
             )
 
             if result:
@@ -149,8 +233,8 @@ async def run_simulator():
 
         index += 1
 
-        # Restart route when destination reached
-        if index >= len(ROUTE):
+        # Restart the continuous route when destination is reached.
+        if index >= len(route_points):
             print()
             print(
                 "🔄 Route completed. "

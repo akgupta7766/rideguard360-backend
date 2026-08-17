@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 import os
+import secrets
 
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -33,6 +34,7 @@ pwd_context = CryptContext(
 
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -136,3 +138,37 @@ def require_role(*allowed_roles: str):
         return current_user
 
     return role_checker
+
+
+async def require_gps_update_access(
+    simulator_key: str | None = Header(
+        default=None,
+        alias="X-GPS-Simulator-Key",
+    ),
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        optional_security
+    ),
+) -> dict:
+    """Allow a simulator API key or an existing admin/driver JWT."""
+    expected_key = os.getenv("GPS_SIMULATOR_API_KEY")
+
+    if (
+        expected_key
+        and simulator_key
+        and secrets.compare_digest(simulator_key, expected_key)
+    ):
+        return {"id": "gps-simulator", "role": "simulator"}
+
+    if credentials:
+        payload = decode_access_token(credentials.credentials)
+        if payload and payload.get("role") in {"admin", "driver"}:
+            return {
+                "id": payload.get("sub"),
+                "email": payload.get("email"),
+                "role": payload["role"],
+            }
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Valid simulator key or admin/driver token required",
+    )

@@ -20,7 +20,8 @@ class ConnectionManager:
     async def broadcast(self, message: dict):
         disconnected = []
 
-        for websocket in self.active_connections:
+        # Iterate over a snapshot because failed sends are removed below.
+        for websocket in list(self.active_connections):
             try:
                 await websocket.send_json(message)
             except Exception:
