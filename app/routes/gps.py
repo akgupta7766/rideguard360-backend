@@ -1,4 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 
 from app.core.security import require_role
 from app.schemas.gps import GPSUpdateRequest, GPSResponse
@@ -6,6 +13,7 @@ from app.services.gps_service import (
     update_bus_location,
     get_bus_location,
 )
+from app.websocket.manager import manager
 
 
 router = APIRouter(
@@ -56,3 +64,18 @@ async def get_gps(
         )
 
     return result
+
+
+@router.websocket("/ws")
+async def gps_websocket(websocket: WebSocket):
+    await manager.connect(websocket)
+
+    try:
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+    except Exception:
+        manager.disconnect(websocket)
